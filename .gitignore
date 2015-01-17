@@ -1,0 +1,4 @@
+knnTest
+knnTestDouble
+*.o
+*.a

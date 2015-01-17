@@ -1,24 +1,24 @@
-# Makefile 
+# Makefile
 # AUTHOR: Nikos Sismanis
 # Date: Mar 2012
-ARC=12
+ARC=20
 
 
-MEX=mex -O 
+MEX=mex -O
 NVCC=nvcc -O4 -arch=sm_$(ARC) -Xcompiler -fPIC
 CC=gcc -O4
 CMP=tar
 
 # Set the correct paths in your computer
 
-CUDA_PATH=/usr/local/cuda-5.0
+CUDA_PATH=/usr/local/cuda-6.5
 CUDA_INC=$(CUDA_PATH)/bin/
 CUDA_LIB=$(CUDA_PATH)/lib64/
 MATLAB_ROOT=/usr/local/MATLAB/R2011b
 
 
 ##############################################
-# Do not modify anything beyond that point 
+# Do not modify anything beyond that point
 #############################################
 
 MEX_INC=$(MATLAB_ROOT)/extern/include
@@ -48,20 +48,20 @@ ADDDATA = $(CC)/data.txt
 all: library bintest mexfiles
 
 
-library: $(SRC)/cuknnHeap.cu $(SRC)/cuknnBitonic.cu 
+library: $(SRC)/cuknnHeap.cu $(SRC)/cuknnBitonic.cu
 
 	$(NVCC) -c -D CUARCH=$(ARC) $(SRC)/cuknnHeap.cu -I$(CUDA_INC) -I$(MEX_INC) -o $(LIB)/cuknnHeap.o
 	$(NVCC) -c -D CUARCH=$(ARC) $(SRC)/cuknnBitonic.cu -I$(CUDA_INC) -I$(MEX_INC) -o $(LIB)/cuknnBitonic.o
 	$(NVCC) -c -D CUARCH=$(ARC) $(SRC)/knnsplan.cu -I$(CUDA_INC) -I$(MEX_INC) -o $(LIB)/knnsplan.o
 	$(NVCC) -c -D CUARCH=$(ARC) $(SRC)/knnsexecute.cu -I$(CUDA_INC) -I$(MEX_INC) -o $(LIB)/knnsexecute.o
-	ar rcs $(LIB)/libcuknn.a $(LIB)/cuknnHeap.o $(LIB)/cuknnBitonic.o $(LIB)/knnsplan.o $(LIB)/knnsexecute.o 
+	ar rcs $(LIB)/libcuknn.a $(LIB)/cuknnHeap.o $(LIB)/cuknnBitonic.o $(LIB)/knnsplan.o $(LIB)/knnsexecute.o
 
 
 	$(NVCC) -c -D CUARCH=$(ARC) -D __DOUBLE__=1 $(SRC)/cuknnHeap.cu -I$(CUDA_INC) -I$(MEX_INC) -o $(LIB)/cuknnDHeap.o
 	$(NVCC) -c -D CUARCH=$(ARC) -D __DOUBLE__=1 $(SRC)/cuknnBitonic.cu -I$(CUDA_INC) -I$(MEX_INC) -o $(LIB)/cuknnDBitonic.o
 	$(NVCC) -c -D CUARCH=$(ARC) -D __DOUBLE__=1 $(SRC)/knnsplan.cu -I$(CUDA_INC) -I$(MEX_INC) -o $(LIB)/knnsDplan.o
 	$(NVCC) -c -D CUARCH=$(ARC) -D __DOUBLE__=1 $(SRC)/knnsexecute.cu -I$(CUDA_INC) -I$(MEX_INC) -o $(LIB)/knnsDexecute.o
-	ar rcs $(LIB)/libcuknn_double.a $(LIB)/cuknnDHeap.o $(LIB)/cuknnDBitonic.o $(LIB)/knnsDplan.o $(LIB)/knnsDexecute.o 
+	ar rcs $(LIB)/libcuknn_double.a $(LIB)/cuknnDHeap.o $(LIB)/cuknnDBitonic.o $(LIB)/knnsDplan.o $(LIB)/knnsDexecute.o
 
 
 
@@ -72,7 +72,7 @@ bintest: $(SRC)/knnTest.cu
 	$(NVCC) -D __DOUBLE__=1 $(SRC)/knnTest.cu -L$(LIB) -lcuknn_double -L$(CUDA_LIB) $(LIBS) -o $(DEMO)/knnTestDouble
 
 
-release: 
+release:
 
 	$(CMP) -cvf $(RELEASE_VERSION).tar $(ADDSRC) $(ADDINC) $(ADDTOOL) $(ADDDEMO) $(ADDLIB) $(ADDDATA) $(ADDBIN) ../knn-toolbox/Makefile ../knn-toolbox/setup.m ../knn-toolbox/readme.txt
 
@@ -86,9 +86,9 @@ bitonicInter: $(SRC)/cuknnBitonicInter.cu
 mexfiles: $(SRC)/mexknnsGen.cu
 
 	$(NVCC) -c -D CUARCH=$(ARC) $(SRC)/mexknnsGen.cu -I$(CUDA_INC) -I$(MEX_INC) -o $(LIB)/mexknnsBitonic.o
-	$(NVCC) -c -D CUARCH=$(ARC) -D __DOUBLE__=1 $(SRC)/mexknnsGen.cu -I$(CUDA_INC) -I$(MEX_INC) -o $(LIB)/mexknnsDBitonic.o 
+	$(NVCC) -c -D CUARCH=$(ARC) -D __DOUBLE__=1 $(SRC)/mexknnsGen.cu -I$(CUDA_INC) -I$(MEX_INC) -o $(LIB)/mexknnsDBitonic.o
 	$(MEX) $(LIB)/mexknnsBitonic.o $(LIB)/libcuknn.a -L$(CUDA_LIB) $(LIBS) -o $(BIN)/mexknnsBitonic
-	$(MEX) $(LIB)/mexknnsDBitonic.o $(LIB)/libcuknn_double.a -L$(CUDA_LIB) $(LIBS) -o $(BIN)/mexknnsDBitonic 
+	$(MEX) $(LIB)/mexknnsDBitonic.o $(LIB)/libcuknn_double.a -L$(CUDA_LIB) $(LIBS) -o $(BIN)/mexknnsDBitonic
 	$(NVCC) -c -D ARCH=$(ARC) $(SRC)/mexknnsHeap.cu -I$(CUDA_INC) -I$(MEX_INC) -o $(LIB)/mexknnsHeap.o
 	$(NVCC) -c -D CUARCH=$(ARC) -D __DOUBLE__=1 $(SRC)/mexknnsHeap.cu -I$(CUDA_INC) -I$(MEX_INC) -o $(LIB)/mexknnsDHeap.o
 	$(MEX) $(LIB)/mexknnsHeap.o $(LIB)/libcuknn.a -L$(CUDA_LIB) $(LIBS) -o $(BIN)/mexknnsHeap

@@ -23,6 +23,8 @@ void init(knntype *a, int N){
 }
 
 extern "C" void knnsplan(knnplan *plan, long int N,long  int Q, long int D,long  int k){
+  printf("knnsplan N=%d Q=%d D=%d k=%d\n", N, Q, D, k);
+  printf("ALG=%d NSTREAMS=%d ITERATIONS=%d\n", ALG, NSTREAMS, ITERATIONS);
 
   double times[NSTREAMS][ALG];
   double best_time[ALG];
@@ -34,19 +36,19 @@ extern "C" void knnsplan(knnplan *plan, long int N,long  int Q, long int D,long 
   cudaHostAlloc((void**)&queries, Q*D*sizeof(knntype), cudaHostAllocWriteCombined);
   KNNdist = (knntype*)malloc(Q*k*sizeof(knntype));
   KNNidx = (knntype*)malloc(Q*k*sizeof(knntype));
-  
+
 
   init(data, N*D);
   init(queries, Q*D);
-  
 
-  for(int s=0; s<NSTREAMS; s++){    
+
+  for(int s=0; s<NSTREAMS; s++){
 
   double time1tmp = 0;
   double time2tmp = 0;
   for(int i=0; i<ITERATIONS; i++){
 
-    time1tmp += gpuknnsBitonic(queries, data, KNNdist, KNNidx, N, Q, D, k, streams[s]);  
+    time1tmp += gpuknnsBitonic(queries, data, KNNdist, KNNidx, N, Q, D, k, streams[s]);
 
     time2tmp += gpuknnsHeap(queries, data, KNNdist, KNNidx, N, Q, D, k, streams[s]);
   }
@@ -56,6 +58,13 @@ extern "C" void knnsplan(knnplan *plan, long int N,long  int Q, long int D,long 
 
   }
 
+  printf("gpuknnsBitonic\n");
+  for (int i = 0; i < NSTREAMS; ++i)
+    printf("#stream=%d %f\n", streams[i], times[i][0]);
+
+  printf("gpuknnsHeap\n");
+  for (int i = 0; i < NSTREAMS; ++i)
+    printf("#stream=%d %f\n", streams[i], times[i][1]);
 
   for(int i=0; i<ALG; i++){
     best_time[i] = FLT_MAX;
@@ -79,7 +88,9 @@ extern "C" void knnsplan(knnplan *plan, long int N,long  int Q, long int D,long 
     pic = 1;
   }
 
-  
+  printf("pic=%d streams[best_stream[pic]]=%d\n", pic,
+         streams[best_stream[pic]]);
+
   switch (pic){
 
   case 0:

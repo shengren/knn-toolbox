@@ -111,8 +111,28 @@ int main(int argc, char** argv){
 
   knnsexecute(plan, data, queries, KNNdist, KNNidx);
 
-  save(KNNdist, distfile, k*Q);
-  save(KNNidx, idxfile, k*Q);
+  //save(KNNdist, distfile, k*Q);
+  //save(KNNidx, idxfile, k*Q);
+
+  FILE *file_knn_dist = fopen("dist.txt", "w");
+  for (int i = 0; i < Q; ++i) {
+    for (int j = 0; j < k; ++j) {
+      if (j > 0) fprintf(file_knn_dist, " ");
+      fprintf(file_knn_dist, "%.5f", KNNdist[i * k + j]);
+    }
+    fprintf(file_knn_dist, "\n");
+  }
+  fclose(file_knn_dist);
+
+  FILE *file_knn_idx = fopen("idx.txt", "w");
+  for (int i = 0; i < Q; ++i) {
+    for (int j = 0; j < k; ++j) {
+      if (j > 0) fprintf(file_knn_idx, " ");
+      fprintf(file_knn_idx, "%d", (int)KNNidx[i * k + j]);
+    }
+    fprintf(file_knn_idx, "\n");
+  }
+  fclose(file_knn_idx);
 
   cudaFreeHost(data);
   cudaFreeHost(queries);

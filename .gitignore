@@ -3,3 +3,4 @@ knnTestDouble
 *.a
 *.bin
 *.o
+*.txt

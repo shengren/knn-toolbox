@@ -90,22 +90,26 @@ int main(int argc, char** argv){
 
   printf("files: %s %s\n", datafile, queryfile);
 
+  // TODO(shengren): There are individual kernels for D=50,128,1024,2048. The
+  // kernel for general D is buggy. 'data' is NxD. 'queries' is QxD. Our test
+  // input files are DxN and DxQ with D=100. So here we need to transpose the
+  // input matrices and expand them to D=128.
   knntype *buf;
 
-  buf = (knntype *)malloc(N * D * sizeof(knntype));
-  load(buf, datafile, N*D);
+  buf = (knntype *)malloc(100 * N * sizeof(knntype));
+  load(buf, datafile, 100 * N);
   for (int i = 0; i < N; ++i) {
     for (int j = 0; j < D; ++j) {
-      data[i * D + j] = buf[j * N + i];
+      data[i * D + j] = (j < 100) ? buf[j * N + i] : (knntype)0;
     }
   }
   free(buf);
 
-  buf = (knntype *)malloc(Q * D * sizeof(knntype));
-  load(buf, queryfile, Q*D);
+  buf = (knntype *)malloc(100 * Q * sizeof(knntype));
+  load(buf, queryfile, 100 * Q);
   for (int i = 0; i < Q; ++i) {
     for (int j = 0; j < D; ++j) {
-      queries[i * D + j] = buf[j * Q + i];
+      queries[i * D + j] = (j < 100) ? buf[j * Q + i] : (knntype)0;
     }
   }
   free(buf);
@@ -131,11 +135,13 @@ int main(int argc, char** argv){
   //save(KNNdist, distfile, k*Q);
   //save(KNNidx, idxfile, k*Q);
 
+  // 'KNNdist' and 'KNNidx' are Q by k matrices.
+
   FILE *file_knn_dist = fopen("dist.txt", "w");
   for (int i = 0; i < Q; ++i) {
     for (int j = 0; j < k; ++j) {
       if (j > 0) fprintf(file_knn_dist, " ");
-      fprintf(file_knn_dist, "%.5f", KNNdist[j * Q + i]);
+      fprintf(file_knn_dist, "%.5f", KNNdist[i * k + j]);
     }
     fprintf(file_knn_dist, "\n");
   }
@@ -145,7 +151,7 @@ int main(int argc, char** argv){
   for (int i = 0; i < Q; ++i) {
     for (int j = 0; j < k; ++j) {
       if (j > 0) fprintf(file_knn_idx, " ");
-      fprintf(file_knn_idx, "%.0f", KNNidx[j * Q + i]);
+      fprintf(file_knn_idx, "%.0f", KNNidx[i * k + j]);
     }
     fprintf(file_knn_idx, "\n");
   }

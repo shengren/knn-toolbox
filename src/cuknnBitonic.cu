@@ -70,7 +70,7 @@ __global__ void bitonic_shared(knntype *DstKey, knntype *DstVal, knntype *SrcKey
   s_val[threadIdx.x + (SHARED_SIZE_LIMIT >> 1)] = blockIdx.x * SHARED_SIZE_LIMIT + threadIdx.x + (SHARED_SIZE_LIMIT >> 1) + idOffset;
 
   __syncthreads();
-  
+
   uint ddd;
   uint pos;
   //SHARED_SIZE_LIMIT
@@ -83,8 +83,8 @@ __global__ void bitonic_shared(knntype *DstKey, knntype *DstVal, knntype *SrcKey
       Comparator(s_key[pos + 0], s_val[pos + 0], s_key[pos + stride], s_val[pos + stride], ddd);
     }
   }
-  
-  
+
+
   for(int obj = SHARED_SIZE_LIMIT >> 1; obj >= k; obj >>= 1){
 
     __syncthreads();
@@ -92,14 +92,14 @@ __global__ void bitonic_shared(knntype *DstKey, knntype *DstVal, knntype *SrcKey
     // End of first part
     int bi = threadIdx.x >> qk;
     int li = threadIdx.x & (k-1);
-    
+
     int pb = (obj >> qk) + ((bi + 1) & ((obj >> qk)-1));
     int prt = (pb << qk) + li;
-    
+
     if(threadIdx.x<obj){
       Comparator_elim(s_key[threadIdx.x], s_val[threadIdx.x], s_key[prt], s_val[prt], 1);
 
-      
+
       uint size = k;
       ddd = dir ^ ( (threadIdx.x & (size >> 1)) != 0 );
       for(int stride = size / 2; stride > 0; stride >>= 1){
@@ -107,17 +107,17 @@ __global__ void bitonic_shared(knntype *DstKey, knntype *DstVal, knntype *SrcKey
 	pos = 2 * threadIdx.x - (threadIdx.x & (stride - 1));
 	Comparator(s_key[pos + 0], s_val[pos + 0], s_key[pos + stride], s_val[pos + stride], ddd);
       }
-      
+
     }
   }
-  
+
   __syncthreads();
-  
-  if(threadIdx.x < k){ 
+
+  if(threadIdx.x < k){
     DstKey[k*blockIdx.x + threadIdx.x] =  (blockIdx.x & 1) == 0 ? s_key[threadIdx.x] : s_key[k-threadIdx.x-1];
     DstVal[k*blockIdx.x + threadIdx.x] = (blockIdx.x & 1) == 0 ? s_val[threadIdx.x] : s_val[k-threadIdx.x-1];
   }
-  
+
 }
 
 __global__ void bitonic_shared2(knntype *DstKey, knntype *DstVal, knntype *SrcKey, knntype *SrcVal, int arrayLength, int objects, int queries, uint dir, int k, int qk){
@@ -158,7 +158,7 @@ __global__ void bitonic_shared2(knntype *DstKey, knntype *DstVal, knntype *SrcKe
 
     __syncthreads();
 
-    // End of first part                                                                                                               
+    // End of first part
     int bi = threadIdx.x >> qk;
     int li = threadIdx.x & (k-1);
 
@@ -223,7 +223,7 @@ void BitonicSelect(knntype *DstKey, knntype *DstVal, knntype *SrcKey, knntype *S
   int idOffset = streamId*objects;
 
   bitonic_shared<<<grid, threads, 0, str>>>(buffkey, buffval, SrcKey, SrcVal, numObjects, objects, queries, 1, k, qk, idOffset);
-  
+
   objects = grd*k;
   int robjects = objects;
   objects = (objects & (SHARED_SIZE_LIMIT-1)) ? (objects / SHARED_SIZE_LIMIT + 1)*SHARED_SIZE_LIMIT : (objects / SHARED_SIZE_LIMIT)*SHARED_SIZE_LIMIT;
@@ -236,15 +236,15 @@ void BitonicSelect(knntype *DstKey, knntype *DstVal, knntype *SrcKey, knntype *S
 
     bitonic_shared2<<<gridp, threadsp, 0, str>>>(tmpkey1, tmpval1, tmpkey2, tmpval2, numObjects, robjects, queries, 1, k, qk);
 
-    tmpK = tmpkey1; tmpkey1 = tmpkey2; tmpkey2 = tmpK;                                                                                
+    tmpK = tmpkey1; tmpkey1 = tmpkey2; tmpkey2 = tmpK;
     tmpV = tmpval1; tmpval1 = tmpval2; tmpval2 = tmpV;
 
     objects = k*(objects / blockSize);
     robjects = objects;
     objects = (objects & (SHARED_SIZE_LIMIT-1)) ? (objects / SHARED_SIZE_LIMIT + 1)*SHARED_SIZE_LIMIT : (objects / SHARED_SIZE_LIMIT)*SHARED_SIZE_LIMIT;
-    
+
   }
- 
+
 
   dim3 threads_relloc(k, 1);
   dim3 grid_relloc(queries,1);
@@ -269,12 +269,12 @@ __global__ void initialize_index_B(knntype* data, int objects, int numQueries){
 /* Test function test function currently no used */
 extern "C" void cuknnsBitonic(knntype *dist, knntype *data, knntype *query, knntype *index, knntype *dotp, knntype *d_dotB, knntype *distbuff, knntype *idxbuff, int objects, int attributes, int numQueries, int k, cublasHandle_t handle, CUstream str, knntimes* times, int strId){
 
-  float tmp_time;	
+  float tmp_time;
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
 
-  int qk = (int)(log((float)k) / log(2.0));  
+  int qk = (int)(log((float)k) / log(2.0));
 
   dim3 inThreads(BLOCKSIZE, 1);
   int block = (objects & (BLOCKSIZE-1)) ? objects / BLOCKSIZE + 1 : objects / BLOCKSIZE;
@@ -303,9 +303,9 @@ extern "C" void cuknnsBitonic(knntype *dist, knntype *data, knntype *query, knnt
   cudaEventElapsedTime(&tmp_time, start, stop);
 
   times->srch_time += tmp_time;
-  
+
   switch(attributes){
-    
+
   case 50:
     //dot4_50<<<numQueries, 50, 0, str>>>(d_ditB, quary);
   case 128:
@@ -323,7 +323,7 @@ extern "C" void cuknnsBitonic(knntype *dist, knntype *data, knntype *query, knnt
 #endif
     break;
   }
-  
+
   dim3 threads2(k, 1);
   dim3 grid2(numQueries, 1);
 
@@ -335,12 +335,12 @@ extern "C" void cuknnsBitonic(knntype *dist, knntype *data, knntype *query, knnt
 
 /* KNNS using TBiS */
 extern "C" void cuknnsBitonicSTR(knntype *dist, knntype *data, knntype *query, knntype *index, knntype *dotp, knntype *d_dotB, knntype *distbuff, knntype *idxbuff, int objects, int attributes, int numQueries, int k, cublasHandle_t handle, CUstream str, knntimes* times, int strId, distFunctParam *distFunc){
-  
-  float tmp_time;  
+
+  float tmp_time;
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
-  
+
 
   int qk = (int)(log((float)k) / log(2.0));
 
@@ -423,6 +423,7 @@ extern "C" double gpuknnsBitonic(knntype *query, knntype *data, knntype *values,
 #else
 extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *values, knntype *indices, int objects, int numQueries, int attributes, int k, int numStreams){
 #endif
+  printf("%s\n", __func__);
 
   knntype *d_data, *d_query;
   knntype *d_dotp, *d_dist, *d_labels;
@@ -443,7 +444,7 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
   cudaEventCreate(&stop);
 
   cublasHandle_t handle;
-  
+
   cublasCreate(&handle);
 
   cudaMalloc((void**)&d_query, numQueries*attributes*sizeof(knntype));
@@ -519,7 +520,7 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
   }
 
 
-  /* Initialize memory */  
+  /* Initialize memory */
   knntype *outbuffDist, *outbuffIdx;
   cudaMallocHost((void**)&outbuffDist, blocksPstream*numStreams*CorpusBlocks*numQueries*k*sizeof(knntype));
   cudaMallocHost((void**)&outbuffIdx, blocksPstream*numStreams*CorpusBlocks*numQueries*k*sizeof(knntype));
@@ -537,7 +538,7 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
 
   cudaMemcpyAsync(d_query, query, numQueries*attributes*sizeof(knntype), cudaMemcpyHostToDevice, stream[0]);
 
-  /*compute the dot product of the queries*/  
+  /*compute the dot product of the queries*/
   dstfunc.dotP.dotQ<<<numQueries, dstfunc.dotP.nthreadsQ, dstfunc.dotP.externShared, stream[0]>>>(d_dotB, d_query, attributes);
 
   int fail = 0;
@@ -545,37 +546,37 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
   //float TotalSeachTime = 0;
   //float TotalCompTime = 0;
   cudaEventRecord(start, 0);
-  
-  
+
+
   for(int ii=0, c = 0; ii<objects; ii+=maxObjects, c++){
-    
+
     int CorpusBlockSize = min(maxObjects, objects-ii);
     int StreamSize = CorpusBlockSize / numStreams;
-        
+
     for(int jj=0; jj<numStreams; jj++){
       cudaMemcpyAsync(d_data + jj*StreamSize*attributes, data + ii*attributes + jj*StreamSize*attributes, StreamSize*attributes*sizeof(knntype), cudaMemcpyHostToDevice, stream[jj]);
     }
-    
+
 #ifndef MEMTEST
-    
+
     for(int jj=0; jj<numStreams; jj++){
       cuknnsBitonicSTR(d_dist + jj*StreamSize*numQueries, d_data + jj*StreamSize*attributes, d_query, d_labels + jj*StreamSize*numQueries, d_dotp+jj*StreamSize, d_dotB, distbuff + jj*StreamSize*numQueries, idxbuff + jj*StreamSize*numQueries, StreamSize, attributes, numQueries, k, handle, stream[jj], &TimesOut, c*numStreams + jj, &dstfunc);
-	
+
     }
 #endif
-    
+
     for(int jj=0; jj<numStreams; jj++){
       cudaMemcpyAsync(outbuffDist + jj*k*numQueries + c*numStreams*k*numQueries, d_dist + jj*StreamSize*numQueries, k*numQueries*sizeof(knntype), cudaMemcpyDeviceToHost, stream[jj]);
       cudaMemcpyAsync(outbuffIdx + jj*k*numQueries + c*numStreams*k*numQueries, d_labels + jj*StreamSize*numQueries, k*numQueries*sizeof(knntype), cudaMemcpyDeviceToHost, stream[jj]);
     }
-    
+
   }
-  
+
   cuCtxSynchronize();
-  
+
   cudaEventRecord(stop, 0);
   cudaEventSynchronize(stop);
- 
+
   cudaEventElapsedTime(&elapsedTime, start, stop);
 
   TimesOut.knn_time = (fail==0) ? elapsedTime / 1000 : FLT_MAX;
@@ -587,10 +588,10 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
   if(ss*CorpusBlocks>1){
     mergeResBitonic(outbuffDist, outbuffIdx, k, numQueries, ss*CorpusBlocks);
   }
-  
+
   memcpy(values, outbuffDist, k*numQueries*sizeof(knntype));
   memcpy(indices, outbuffIdx, k*numQueries*sizeof(knntype));
-  
+
 
   for(int i=0; i<numStreams; i++){
     cuStreamDestroy(stream[i]);
@@ -614,8 +615,8 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
 
 
   return(TimeOut);
-  
-} 
+
+}
 
 
 /* Under development */
@@ -747,14 +748,14 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
 
   int offset = 0;
   for(int ii=0, c = 0; ii<numClusters; ii+=numStreams, c++){
-    
+
     //int CorpusBlockSize = min(maxObjects, objects-ii);
     int StreamSize = bucketSize[ii];
     //int offset = redSizes[ii];
     int pasedStreams = 0;
     int mOffset = (offset & ((objects>>1)-1));
 
-    
+
     //for(int jj=0; jj<numStreams, pasedStreams<maxObjects; jj++){
     for(int jj=0; jj<numStreams; jj++){
       StreamSize = bucketSize[ii+jj];
@@ -763,7 +764,7 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
       cudaMemcpyAsync(d_dotp + pasedStreams, dp + mOffset + pasedStreams, StreamSize*sizeof(knntype), cudaMemcpyHostToDevice, stream[jj]);
       pasedStreams += StreamSize;
     }
-    
+
 #ifndef MEMTEST
     pasedStreams = 0;
     //for(int jj=0; jj<numStreams, pasedStreams<maxObjects; jj++){
@@ -781,25 +782,25 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
       cudaMemcpyAsync(outbuffIdx + k*query_offsets[ii+jj], d_labels + pasedStreams*query_offsets[ii+jj], query_sizes[ii+jj]*k*sizeof(knntype), cudaMemcpyDeviceToHost, stream[jj]);
       pasedStreams += StreamSize;
     }
-    
+
     offset += pasedStreams;
   }
 
- 
+
   cuCtxSynchronize();
- 
+
   cudaEventRecord(stop, 0);
   cudaEventSynchronize(stop);
-  
+
   printf("Exiting streaming... \n");
-  
+
   cudaEventElapsedTime(&elapsedTime, start, stop);
-  
+
   TimesOut.knn_time = (fail==0) ? elapsedTime / 1000 : FLT_MAX;
   TimeOut = TimesOut.knn_time;
- 
+
 #ifndef MEMTEST
- 
+
   printf("Bitonic Search: N: %d, Q: %d, streams: %d, time : %f\n", objects, numQueries, numStreams, TimeOut);
   //printf("Computation Time: %f\n", (TimesOut.dst_time + TimesOut.srch_time) / 1000);
   printf("Time elapsed knns with Bitonic Search: %f\n", TimeOut);
@@ -807,7 +808,7 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
 #else
   printf("Data transfer: N: %d, Q: %d, time elapsed: %f\n", objects, numQueries, TimeOut);
 #endif
- 
+
   /*
 #ifndef MEMTEST
   int ss = numStreams;
@@ -820,16 +821,16 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
 
   memcpy(values, outbuffDist, k*numQueries*sizeof(knntype));
   memcpy(indices, outbuffIdx, k*numQueries*sizeof(knntype));
-  
-  
+
+
   for(int i=0; i<numStreams; i++){
     cuStreamDestroy(stream[i]);
   }
-  
+
   cudaFree(d_dotB);
   cudaFree(distbuff);
   cudaFree(idxbuff);
-  
+
   cudaFreeHost(outbuffDist);
   cudaFreeHost(outbuffIdx);
   cublasDestroy(handle);
@@ -842,10 +843,10 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
   cudaEventDestroy(stop);
   free(stream);
   //cudaDeviceReset();
-  
+
   return(TimeOut);
  }
- 
+
 
 
 

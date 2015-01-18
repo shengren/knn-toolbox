@@ -1,4 +1,5 @@
 knnTest
 knnTestDouble
-*.o
 *.a
+*.bin
+*.o

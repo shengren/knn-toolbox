@@ -335,6 +335,7 @@ extern "C" void cuknnsBitonic(knntype *dist, knntype *data, knntype *query, knnt
 
 /* KNNS using TBiS */
 extern "C" void cuknnsBitonicSTR(knntype *dist, knntype *data, knntype *query, knntype *index, knntype *dotp, knntype *d_dotB, knntype *distbuff, knntype *idxbuff, int objects, int attributes, int numQueries, int k, cublasHandle_t handle, CUstream str, knntimes* times, int strId, distFunctParam *distFunc){
+  printf("%s\n", __func__);
 
   float tmp_time;
   cudaEvent_t start, stop;
@@ -349,14 +350,16 @@ extern "C" void cuknnsBitonicSTR(knntype *dist, knntype *data, knntype *query, k
   int block = (objects & (BLOCKSIZE-1)) ? objects / BLOCKSIZE + 1 : objects / BLOCKSIZE;
   dim3 inGrid(block, 1);
 
-  cudaEventRecord(start, str);
+  //cudaEventRecord(start, str);
 
   distFunc->distF(dist, data, query, dotp, objects, attributes, numQueries, handle, str, &distFunc->dotP);
 
-  cudaEventRecord(stop, str);
-  cudaEventSynchronize(stop);
-  cudaEventElapsedTime(&tmp_time, start, stop);
-  times->dst_time = tmp_time;
+  //cudaEventRecord(stop, str);
+  //cudaEventSynchronize(stop);
+  //cudaEventElapsedTime(&tmp_time, start, stop);
+  //times->dst_time = tmp_time;
+  //printf("distFunc->distF %.3f ms\n", tmp_time);
+
   cudaEventRecord(start, str);
 
   BitonicSelect(dist, index, dist, index, distbuff, idxbuff, objects, numQueries, k, qk, str, strId);
@@ -366,11 +369,23 @@ extern "C" void cuknnsBitonicSTR(knntype *dist, knntype *data, knntype *query, k
   cudaEventElapsedTime(&tmp_time, start, stop);
   times->srch_time += tmp_time;
   times->srch_time = tmp_time;
+  printf("BitonicSelect %.3f ms\n", tmp_time);
 
   dim3 threads2(k, 1);
   dim3 grid2(numQueries, 1);
 
+  cudaEventRecord(start);
   dot3<<<grid2, threads2, 0, str>>>(dist, d_dotB);
+  cudaDeviceSynchronize();
+  cudaError_t err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    printf("CUDA error: %s\n", cudaGetErrorString(err));
+    exit(EXIT_FAILURE);
+  }
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  cudaEventElapsedTime(&tmp_time, start, stop);
+  printf("dot3 %.3f ms\n", tmp_time);
 
   cudaEventDestroy(start);
   cudaEventDestroy(stop);
@@ -379,6 +394,7 @@ extern "C" void cuknnsBitonicSTR(knntype *dist, knntype *data, knntype *query, k
 
 
 void mergeResBitonic(knntype *data, knntype *idx, int k, int Q, int numStreams){
+  printf("%s\n", __func__);
 
   for(int s=0; s<Q; s++){
 
@@ -449,6 +465,7 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
 
   cudaMalloc((void**)&d_query, numQueries*attributes*sizeof(knntype));
 
+  printf("attributes=%d\n", attributes);
 
   /* initialize distance functions */
   distFunctParam dstfunc;
@@ -519,6 +536,7 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
     cuStreamCreate(&stream[i], 0);
   }
 
+  printf("numStreams=%d maxObjects=%d\n", numStreams, maxObjects);
 
   /* Initialize memory */
   knntype *outbuffDist, *outbuffIdx;
@@ -539,13 +557,24 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
   cudaMemcpyAsync(d_query, query, numQueries*attributes*sizeof(knntype), cudaMemcpyHostToDevice, stream[0]);
 
   /*compute the dot product of the queries*/
+  cudaEventRecord(start);
   dstfunc.dotP.dotQ<<<numQueries, dstfunc.dotP.nthreadsQ, dstfunc.dotP.externShared, stream[0]>>>(d_dotB, d_query, attributes);
+  cudaDeviceSynchronize();
+  cudaError_t err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    printf("CUDA error: %s\n", cudaGetErrorString(err));
+    exit(EXIT_FAILURE);
+  }
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  cudaEventElapsedTime(&elapsedTime, start, stop);
+  printf("dstfunc.dotP.dotQ %.3f ms\n", elapsedTime);
 
   int fail = 0;
   //float TotalDstTime = 0;
   //float TotalSeachTime = 0;
   //float TotalCompTime = 0;
-  cudaEventRecord(start, 0);
+  //cudaEventRecord(start, 0);
 
 
   for(int ii=0, c = 0; ii<objects; ii+=maxObjects, c++){
@@ -574,13 +603,13 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
 
   cuCtxSynchronize();
 
-  cudaEventRecord(stop, 0);
-  cudaEventSynchronize(stop);
+  //cudaEventRecord(stop, 0);
+  //cudaEventSynchronize(stop);
 
-  cudaEventElapsedTime(&elapsedTime, start, stop);
+  //cudaEventElapsedTime(&elapsedTime, start, stop);
 
-  TimesOut.knn_time = (fail==0) ? elapsedTime / 1000 : FLT_MAX;
-  TimeOut = TimesOut.knn_time;
+  //TimesOut.knn_time = (fail==0) ? elapsedTime / 1000 : FLT_MAX;
+  //TimeOut = TimesOut.knn_time;
 
   //printf("Time Elapsed: %f\n", TimeOut);
 

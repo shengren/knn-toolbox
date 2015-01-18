@@ -107,7 +107,7 @@ int main(int argc, char** argv){
   else if (alg == 1)
     plan.pt2Function = &gpuknnsHeap;
   else
-    exit(-1);
+    exit(EXIT_FAILURE);
 
   knnsexecute(plan, data, queries, KNNdist, KNNidx);
 

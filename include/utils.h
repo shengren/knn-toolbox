@@ -86,34 +86,34 @@ __global__ void crpdot2_gen(knntype *B, knntype *A, int objects, int attributes,
       knntype* src = A + point * attributes + threadIdx.x;
       knntype* dst = B + point;
       knntype tmp = (tid<attributes) ? src[0] : 0;
-      
+
       ssX[tid] = tmp * tmp;
       __syncthreads();
 
       if(blockDim.x>32){
-      
+
 	for(int ii=(blockDim.x>>1); ii>32; ii>>=1){
 	  if(tid<ii) { ssX[tid] += ssX[tid + ii];}
 	  __syncthreads();
 	}
-	
-	
+
+
 	if(tid<32){
 	  warpReduce(ssX, tid);
 	}
-	
+
 	__syncthreads();
       }
       else{
 	if(tid<16){ halphwarpReduce(ssX, tid);}
-	__syncthreads();	
+	__syncthreads();
       }
-      
+
       if(tid==0){
         dst[tid] = ssX[tid];
       }
     }
-    
+
   }
 
 }
@@ -169,23 +169,23 @@ __global__ void crpdot2_128(knntype *B, knntype *A, int objects, int attributes,
       knntype* dst = B + point;
       knntype tmp = src[0];
       sX[tid] = tmp * tmp;
-      
+
       __syncthreads();
-      
+
       if(tid<64) { sX[tid] += sX[tid + 64];}
       __syncthreads();
       if(tid<32){
 	warpReduce(sX, tid);
       }
-      
+
       __syncthreads();
-      
+
       if(tid==0){
 	dst[tid] = sX[tid];
       }
     }
   }
-  
+
 }
 
 
@@ -258,7 +258,7 @@ __global__ void crpdot2_2048(knntype *B, knntype *A, int objects, int attributes
       sX[tid+512+1024] = tmp*tmp;
 
       __syncthreads();
-      
+
       sX[tid] += sX[tid + 1024];
       sX[tid+512] += sX[tid + 512 + 1024];
       __syncthreads();
@@ -309,7 +309,7 @@ __global__ void crpdot2_2048(knntype *B, knntype *A, int objects, int attributes
 
 
       __syncthreads();
-      
+
       __syncthreads();
       if(tid<512){sX[tid] += sX[tid + 512];}
       __syncthreads();
@@ -332,7 +332,7 @@ __global__ void crpdot2_2048(knntype *B, knntype *A, int objects, int attributes
       tmp = src[1024+512];
       sX[tid+512] = tmp*tmp;
 
-    
+
       __syncthreads();
       if(tid<512){sX[tid] += sX[tid + 512];}
       __syncthreads();
@@ -498,7 +498,7 @@ __device__ void warpReduce(volatile knntype *sX, int tid){
   sX[tid] += sX[tid + 4];
   sX[tid] += sX[tid + 2];
   sX[tid] += sX[tid + 1];
-  
+
 }
 
 __device__ void halphwarpReduce(volatile knntype *sX, int tid){
@@ -536,12 +536,12 @@ __global__ void dot4_gen(knntype *dst, knntype *src, int attributes){
       if(tid<ii) { dX[tid] += dX[tid + ii];}
       __syncthreads();
     }
-    
+
     if(tid<32){
       warpReduce(dX, tid);
-    } 
+    }
     __syncthreads();
-    
+
   }
   else{
     if(tid<16){ halphwarpReduce(dX, tid);}
@@ -890,7 +890,7 @@ void pdist_Q(knntype *dist, knntype *data, knntype *query, knntype *dotp, int ob
 
 #ifdef __DOUBLE__
   cublasDgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, numQueries, objects, attributes, &alpha, query, attributes, data, attributes, &beta, dist, numQueries);
-#else 
+#else
   cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, numQueries, objects, attributes, &alpha, query, attributes, data, attributes, &beta, dist, numQueries);
 #endif
 
@@ -900,8 +900,8 @@ void pdist_Q(knntype *dist, knntype *data, knntype *query, knntype *dotp, int ob
   int P = (int)ceil((float)objects/(float)MAXBLOCKS);
 
   dotPKernel->dotCrp<<<crpgrid, dotPKernel->nthreadsCrp, dotPKernel->externShared*sizeof(knntype), str>>>(dotp, data, objects, attributes, P);
-  
-  
+
+
   if(numQueries<=BLOCKSIZE){
 
     int thready = (int)ceil((knntype)BLOCKSIZE/(knntype)numQueries);
@@ -924,8 +924,8 @@ void pdist_Q(knntype *dist, knntype *data, knntype *query, knntype *dotp, int ob
 
     pdot_v2<<<grid, threads, 0, str>>>(dist, dotp, objects, numQueries, elempt);
   }
-  
-  
+
+
 }
 
 
@@ -955,6 +955,14 @@ void pdist_N(knntype *dist, knntype *data, knntype *query, knntype *dotp, int ob
 
 
 void pdist_NT(knntype *dist, knntype *data, knntype *query, knntype *dotp, int objects, int attributes,int numQueries, cublasHandle_t handle, CUstream str, dotKernel *dotPKernel){
+  printf("%s\n", __func__);
+  printf("objects=%d numQueries=%d attributes=%d\n", objects, numQueries, attributes);
+
+  cudaEvent_t start, stop;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
+  float elapsed;
+  cudaError_t err;
 
   knntype alpha = -2;
   knntype beta = 0;
@@ -962,26 +970,54 @@ void pdist_NT(knntype *dist, knntype *data, knntype *query, knntype *dotp, int o
 
   cublasSetStream(handle, str);
 
+  cudaEventRecord(start);
 #ifdef __DOUBLE__
   cublasDgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, objects, numQueries, attributes, &alpha, data, attributes, query, attributes, &beta, dist, objects);
 #else
   cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, objects, numQueries, attributes, &alpha, data, attributes, query, attributes, &beta, dist, objects);
 #endif
-
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  cudaEventElapsedTime(&elapsed, start, stop);
+  printf("cublas*gemm %.3f ms\n", elapsed);
 
   //dim3 crpthreads(DIMENSIONS , 1);
   int nblocks = (objects > MAXBLOCKS) ? MAXBLOCKS : objects;
   dim3 crpgrid(nblocks, 1);
   int P = (int)ceil((float)objects/(float)MAXBLOCKS);
 
+  cudaEventRecord(start);
   dotPKernel->dotCrp<<<crpgrid, dotPKernel->nthreadsCrp, dotPKernel->externShared*sizeof(knntype), str>>>(dotp, data, objects, attributes, P);
+  cudaDeviceSynchronize();
+  err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    printf("CUDA error: %s\n", cudaGetErrorString(err));
+    exit(EXIT_FAILURE);
+  }
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  cudaEventElapsedTime(&elapsed, start, stop);
+  printf("dotPKernel->dotCrp %.3f ms\n", elapsed);
 
   dim3 threads(BLOCKSIZE, 1);
   int block = (int)ceil((knntype)objects/(knntype)BLOCKSIZE);
   dim3 grid(block, 1);
 
+  cudaEventRecord(start);
   pdot<<<grid, threads, 0, str>>>(dist, dotp, objects, numQueries);
+  cudaDeviceSynchronize();
+  err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    printf("CUDA error: %s\n", cudaGetErrorString(err));
+    exit(EXIT_FAILURE);
+  }
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  cudaEventElapsedTime(&elapsed, start, stop);
+  printf("pdot %.3f ms\n", elapsed);
 
+  cudaEventDestroy(start);
+  cudaEventDestroy(stop);
 }
 
 

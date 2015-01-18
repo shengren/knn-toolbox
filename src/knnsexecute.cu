@@ -13,6 +13,6 @@ extern "C" void knnsexecute(knnplan plan, knntype *data, knntype *queries, knnty
 
   double time = plan.pt2Function(queries, data, KNNdist, KNNidx, N, Q, D, k, numStreams);
 
-  printf("Time Elapsed: %f\n", time);
+  //printf("Time Elapsed: %f\n", time);
 
 }

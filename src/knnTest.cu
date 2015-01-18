@@ -90,8 +90,25 @@ int main(int argc, char** argv){
 
   printf("files: %s %s\n", datafile, queryfile);
 
-  load(data, datafile, N*D);
-  load(queries, queryfile, Q*D);
+  knntype *buf;
+
+  buf = (knntype *)malloc(N * D * sizeof(knntype));
+  load(buf, datafile, N*D);
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < D; ++j) {
+      data[i * D + j] = buf[j * N + i];
+    }
+  }
+  free(buf);
+
+  buf = (knntype *)malloc(Q * D * sizeof(knntype));
+  load(buf, queryfile, Q*D);
+  for (int i = 0; i < Q; ++i) {
+    for (int j = 0; j < D; ++j) {
+      queries[i * D + j] = buf[j * Q + i];
+    }
+  }
+  free(buf);
 
   knnplan plan;
 
@@ -118,7 +135,7 @@ int main(int argc, char** argv){
   for (int i = 0; i < Q; ++i) {
     for (int j = 0; j < k; ++j) {
       if (j > 0) fprintf(file_knn_dist, " ");
-      fprintf(file_knn_dist, "%.5f", KNNdist[i * k + j]);
+      fprintf(file_knn_dist, "%.5f", KNNdist[j * Q + i]);
     }
     fprintf(file_knn_dist, "\n");
   }
@@ -128,7 +145,7 @@ int main(int argc, char** argv){
   for (int i = 0; i < Q; ++i) {
     for (int j = 0; j < k; ++j) {
       if (j > 0) fprintf(file_knn_idx, " ");
-      fprintf(file_knn_idx, "%d", (int)KNNidx[i * k + j]);
+      fprintf(file_knn_idx, "%.0f", KNNidx[j * Q + i]);
     }
     fprintf(file_knn_idx, "\n");
   }

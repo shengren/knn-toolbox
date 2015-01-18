@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -56,11 +57,12 @@ void serial_dot(knntype *dot, knntype *data, int N, int D){
       tmp += tt * tt;
     }
     dot[i] = tmp;
-  } 
+  }
 
 }
 
 int main(int argc, char** argv){
+  assert(argc == 8);
 
   char *datafile = argv[1];
   char *queryfile = argv[2];
@@ -73,7 +75,8 @@ int main(int argc, char** argv){
   long int Q = atoi(argv[4]);
   long int D = atoi(argv[5]);
   long int k = atoi(argv[6]);
-  
+  int alg = atoi(argv[7]);
+
   knntype *data, *queries, *KNNdist, *KNNidx, *dp;
   cudaHostAlloc((void**)&data, N*D*sizeof(knntype), cudaHostAllocWriteCombined);
   cudaHostAlloc((void**)&queries, Q*D*sizeof(knntype), cudaHostAllocWriteCombined);
@@ -89,11 +92,23 @@ int main(int argc, char** argv){
 
   load(data, datafile, N*D);
   load(queries, queryfile, Q*D);
- 
+
   knnplan plan;
 
-  knnsplan(&plan, N, Q, D, k);
- 
+  //knnsplan(&plan, N, Q, D, k);
+
+  plan.objects = N;
+  plan.numQueries = Q;
+  plan.dimentions = D;
+  plan.k = k;
+  plan.numStreams = 1;
+  if (alg == 0)
+    plan.pt2Function = &gpuknnsBitonic;
+  else if (alg == 1)
+    plan.pt2Function = &gpuknnsHeap;
+  else
+    exit(-1);
+
   knnsexecute(plan, data, queries, KNNdist, KNNidx);
 
   save(KNNdist, distfile, k*Q);

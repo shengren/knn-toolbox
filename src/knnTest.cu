@@ -135,7 +135,8 @@ int main(int argc, char** argv){
   //save(KNNdist, distfile, k*Q);
   //save(KNNidx, idxfile, k*Q);
 
-  // 'KNNdist' and 'KNNidx' are Q by k matrices.
+  // 'KNNdist' and 'KNNidx' are Q by k matrices. The distances in 'KNNdist' are
+  // squared Euclidean distances.
 
   FILE *file_knn_dist = fopen("dist.txt", "w");
   for (int i = 0; i < Q; ++i) {

@@ -449,6 +449,8 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
   knntimes TimesOut;
 
   cuMemGetInfo(&memory_free, &memory_total);
+  printf("memory_free=%d memory_total=%d\n", (int)memory_free,
+         (int)memory_total);
 
   TimesOut.dst_time = 0;
   TimesOut.srch_time = 0;
@@ -529,14 +531,16 @@ extern "C" double gpuknnsBitonicMemTest(knntype *query, knntype *data, knntype *
 
   maxObjects = min(maxObjects, objects);
 
+  // TODO(shengren): More than one stream will be used if there is not enough
+  // memory. However the result is wrong when there are multiple streams.
+  printf("numStreams=%d maxObjects=%d\n", numStreams, maxObjects);
+
   /*Initialize Streams */
   CUstream *stream = (CUstream*)malloc(numStreams*sizeof(CUstream));
 
   for(int i=0; i<numStreams; i++){
     cuStreamCreate(&stream[i], 0);
   }
-
-  printf("numStreams=%d maxObjects=%d\n", numStreams, maxObjects);
 
   /* Initialize memory */
   knntype *outbuffDist, *outbuffIdx;

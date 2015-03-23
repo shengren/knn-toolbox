@@ -61,8 +61,14 @@ void serial_dot(knntype *dot, knntype *data, int N, int D){
 
 }
 
-int main(int argc, char** argv){
-  assert(argc == 8);
+int main(int argc, char** argv) {
+  if (argc == 1) {
+    printf("./knnTest (datafile) (queryfile) (#reference) (#query) (#dimension)"
+           "(k) (alg) (Actual #dimension)\n");
+    return 0;
+  }
+
+  assert(argc == 9);
 
   char *datafile = argv[1];
   char *queryfile = argv[2];
@@ -76,6 +82,7 @@ int main(int argc, char** argv){
   long int D = atoi(argv[5]);
   long int k = atoi(argv[6]);
   int alg = atoi(argv[7]);
+  int actual_dimension = atoi(argv[8]);
 
   knntype *data, *queries, *KNNdist, *KNNidx, *dp;
   cudaHostAlloc((void**)&data, N*D*sizeof(knntype), cudaHostAllocWriteCombined);
@@ -96,20 +103,20 @@ int main(int argc, char** argv){
   // input matrices and expand them to D=128.
   knntype *buf;
 
-  buf = (knntype *)malloc(100 * N * sizeof(knntype));
-  load(buf, datafile, 100 * N);
+  buf = (knntype *)malloc(actual_dimension * N * sizeof(knntype));
+  load(buf, datafile, actual_dimension * N);
   for (int i = 0; i < N; ++i) {
     for (int j = 0; j < D; ++j) {
-      data[i * D + j] = (j < 100) ? buf[j * N + i] : (knntype)0;
+      data[i * D + j] = (j < actual_dimension) ? buf[j * N + i] : (knntype)0;
     }
   }
   free(buf);
 
-  buf = (knntype *)malloc(100 * Q * sizeof(knntype));
-  load(buf, queryfile, 100 * Q);
+  buf = (knntype *)malloc(actual_dimension * Q * sizeof(knntype));
+  load(buf, queryfile, actual_dimension * Q);
   for (int i = 0; i < Q; ++i) {
     for (int j = 0; j < D; ++j) {
-      queries[i * D + j] = (j < 100) ? buf[j * Q + i] : (knntype)0;
+      queries[i * D + j] = (j < actual_dimension) ? buf[j * Q + i] : (knntype)0;
     }
   }
   free(buf);

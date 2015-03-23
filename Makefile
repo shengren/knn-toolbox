@@ -1,7 +1,7 @@
 # Makefile
 # AUTHOR: Nikos Sismanis
 # Date: Mar 2012
-ARC=20
+ARC=21
 
 
 MEX=mex -O

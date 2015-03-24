@@ -64,7 +64,7 @@ void serial_dot(knntype *dot, knntype *data, int N, int D){
 int main(int argc, char** argv) {
   if (argc == 1) {
     printf("./knnTest (datafile) (queryfile) (#reference) (#query) (#dimension)"
-           "(k) (alg) (Actual #dimension)\n");
+           " (k) (alg) (Actual #dimension)\n");
     return 0;
   }
 
@@ -73,8 +73,8 @@ int main(int argc, char** argv) {
   char *datafile = argv[1];
   char *queryfile = argv[2];
 
-  char *distfile = "KNNdist.bin";
-  char *idxfile = "KNNidx.bin";
+  // char *distfile = "KNNdist.bin";
+  // char *idxfile = "KNNidx.bin";
 
 
   long int N = atoi(argv[3]);

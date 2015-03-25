@@ -371,6 +371,9 @@ extern "C" void cuknnsBitonicSTR(knntype *dist, knntype *data, knntype *query, k
   times->srch_time = tmp_time;
   printf("BitonicSelect %.3f ms\n", tmp_time);
 
+  // NumDimension, NumQuery, NumReference, NumNearestNeighbor, SelectCandidates
+  printf("%d,%d,%d,%d,%.3f\n", attributes, numQueries, objects, k, tmp_time);
+
   dim3 threads2(k, 1);
   dim3 grid2(numQueries, 1);
 
